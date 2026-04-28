@@ -1,33 +1,29 @@
-package main
+package temporal
 
 import (
 	"log"
 
-	"learningTemp/activities"
-	"learningTemp/workflows"
+	"learningTemp/internal/order"
+	"learningTemp/internal/order/activities"
 
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
 )
 
-func main() {
-	c, err := client.Dial(client.Options{})
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer c.Close()
+func StartWorker(c client.Client) {
 
-	w := worker.New(c, "order-task-queue", worker.Options{})
+	w := worker.New(c, order.TaskQueue, worker.Options{})
 
-	w.RegisterWorkflow(workflows.OrderWorkflow)
+	w.RegisterWorkflow(order.OrderWorkflow)
+
 	w.RegisterActivity(activities.ValidateOrder)
 	w.RegisterActivity(activities.ReserveInventory)
 	w.RegisterActivity(activities.ChargePayment)
 	w.RegisterActivity(activities.SendConfirmationEmail)
 
 	log.Println("Worker started...")
-	err = w.Run(worker.InterruptCh())
-	if err != nil {
+
+	if err := w.Run(worker.InterruptCh()); err != nil {
 		log.Fatal(err)
 	}
 }
