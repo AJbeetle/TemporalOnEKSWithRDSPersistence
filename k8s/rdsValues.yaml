@@ -1,0 +1,98 @@
+# This is an example of using an external PostgreSQL database for Temporal persistence and visibility.
+# Replace `_HOST_`, `_USERNAME_`, and `_PASSWORD_` with your PostgreSQL database host, username, and password.
+
+server:
+  config:
+    persistence:
+      defaultStore: default
+      visibilityStore: visibility
+      numHistoryShards: 512
+      datastores:
+        default:
+          sql:
+            pluginName: postgres12
+            databaseName: temporal
+            # connectAddr: "_HOST_:5432"  # or use separate host/port fields
+            host: {{.ENV.POSTGRES_HOST}}
+            port: 5432
+            connectProtocol: "tcp"
+            user: {{.ENV.POSTGRES_USER}}
+            password: {{.ENV.POSTGRES_PASSWORD}}
+            # for a production deployment use this instead of `password` and provision the secret beforehand e.g. with a sealed secret
+            # it has a single key called `password`
+            # existingSecret: temporal-default-store
+            # secretKey: password
+            maxConns: 20
+            maxIdleConns: 20
+            maxConnLifetime: "1h"
+            tls:
+              enabled: true
+              enableHostVerification: true
+              # serverName: _HOST_ # this is strictly required when using serverless CRDB offerings
+              caFile: /etc/temporal/certs/global-bundle.pem
+              
+              # caFile: /path/to/certs/<CA-file> # Here we assumed that caFile, certFile, keyFile are stored in one secret mounted as 'secret-with-certs' (see: server.additionalVolumes and server.additionalVolumeMounts sections).
+              # certFile: /path/to/certs/<client-cert-file>
+              # keyFile: /path/to/certs/<client-key-file>
+        visibility:
+          sql:
+            pluginName: postgres12
+            databaseName: temporal_visibility
+            # connectAddr: "_HOST_:5432"
+            host: {{.ENV.POSTGRES_HOST}}
+            port: 5432
+            connectProtocol: "tcp"
+            user: {{.ENV.POSTGRES_USER}}
+            password: {{.ENV.POSTGRES_PASSWORD}}
+            # for a production deployment use this instead of `password` and provision the secret beforehand e.g. with a sealed secret
+            # it has a single key called `password`
+            # existingSecret: temporal-visibility-store
+            # secretKey: password
+            maxConns: 20
+            maxIdleConns: 20
+            maxConnLifetime: "1h"
+            tls:
+              enabled: true
+              enableHostVerification: true
+              # serverName: _HOST_ # this is strictly required when using serverless CRDB offerings
+              caFile: /etc/temporal/certs/global-bundle.pem
+              # caFile: /path/to/certs/<CA-file> # Here we assumed that caFile, certFile, keyFile are stored in one secret mounted as 'secret-with-certs' (see: server.additionalVolumes and server.additionalVolumeMounts sections).
+              # certFile: /path/to/certs/<client-cert-file>
+              # keyFile: /path/to/certs/<client-key-file>
+
+  # additionalVolumes:
+  #   - name: secret-with-certs
+  #     secret:
+  #       secretName: secret-with-certs
+  # additionalVolumeMounts:
+  #   - name: secret-with-certs
+  #     mountPath: /path/to/certs/
+
+  additionalVolumes:
+    - name: rds-ca-cert
+      configMap:
+        name: rds-ca-cert
+
+  additionalVolumeMounts:
+    - name: rds-ca-cert
+      mountPath: /etc/temporal/certs
+      readOnly: true
+
+  extraEnv:
+    - name: POSTGRES_HOST
+      valueFrom:
+        secretKeyRef:
+          name: temporal-rds-secret
+          key: RDSHOST
+
+    - name: POSTGRES_USER
+      valueFrom:
+        secretKeyRef:
+          name: temporal-rds-secret
+          key: username
+
+    - name: POSTGRES_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: temporal-rds-secret
+          key: password
