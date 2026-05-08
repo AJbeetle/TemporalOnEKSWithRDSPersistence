@@ -42,6 +42,6 @@ func main() {
 		w.Write([]byte("Order workflow started"))
 	})
 
-	log.Println("API running on :8080")
-	http.ListenAndServe(":8080", nil)
+	log.Println("API running on :", cfg.Port)
+	http.ListenAndServe(cfg.Port, nil)
 }

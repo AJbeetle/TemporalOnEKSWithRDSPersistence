@@ -11,8 +11,8 @@ type Config struct {
 
 func Load() *Config {
 	return &Config{
-		TemporalHost: getEnv("TEMPORAL_HOST", "localhost:7233"),
-		Port:         getEnv("PORT", "8080"),
+		TemporalHost: getEnv("TEMPORAL_HOST", "localhost:7234"),
+		Port:         getEnv("PORT", ":8282"),
 	}
 }
 
