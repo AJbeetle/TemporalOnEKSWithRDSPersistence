@@ -1,0 +1,167 @@
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: false
+
+# ─── Global tolerations — applies to ALL components ───────────────────────────
+
+nodeSelector:
+  nodegroup: system     
+
+tolerations:
+  - key: "dedicated"
+    operator: "Equal"
+    value: "system"
+    effect: "NoSchedule"
+
+# ─── Temporal Server ──────────────────────────────────────────────────────────
+server:
+  enabled: true
+
+  config:
+    logLevel: "debug"  # Captures debug, info, warn, error — everything
+
+    persistence:
+      defaultStore: default
+      visibilityStore: visibility
+      numHistoryShards: 4  # ⚠️ Cannot be changed after first install!
+
+      datastores:
+        default:
+          sql:
+            pluginName: postgres12
+            driverName: postgres12
+            databaseName: temporal
+            connectAddr: "temporalrds.ce7qwgwgkd1f.us-east-1.rds.amazonaws.com:5432"
+            connectProtocol: "tcp"
+            user: postgres
+            existingSecret: temporal-rds-secret   # Chart reads host/user/pass
+            secretKey: password                    #    natively from this secret
+            maxConns: 20
+            maxIdleConns: 20
+            maxConnLifetime: "1h"
+            connectAttributes:
+              sslmode: require        # ← forces SSL for RDS
+
+        visibility:
+          sql:
+            pluginName: postgres12
+            driverName: postgres12
+            databaseName: temporal_visibility
+            connectAddr: "temporalrds.ce7qwgwgkd1f.us-east-1.rds.amazonaws.com:5432"
+            connectProtocol: "tcp"
+            user: postgres
+            existingSecret: temporal-rds-secret
+            secretKey: password
+            maxConns: 20
+            maxIdleConns: 20
+            maxConnLifetime: "1h"
+            connectAttributes:
+              sslmode: require        # ← forces SSL for RDS
+
+    namespaces:
+      create: true
+      namespace:
+        - name: default        # Temporal namespace (NOT k8s namespace)
+          retention: 3d        # Workflow history kept for 3 days
+
+  # ── Sub-services — tolerations inherited from global, no overrides needed ───
+  frontend:
+    enabled: true
+    service:
+      type: ClusterIP
+      port: 7233
+    nodeSelector:
+      nodegroup: system     
+
+    tolerations:          
+      - key: dedicated
+        operator: Equal
+        value: system
+        effect: NoSchedule
+
+  history:
+    enabled: true
+    nodeSelector:
+      nodegroup: system     
+
+    tolerations:          
+      - key: dedicated
+        operator: Equal
+        value: system
+        effect: NoSchedule
+
+
+  matching:
+    enabled: true
+    nodeSelector:
+      nodegroup: system     
+
+    tolerations:          
+      - key: dedicated
+        operator: Equal
+        value: system
+        effect: NoSchedule
+
+
+  worker:
+    enabled: true
+    nodeSelector:
+      nodegroup: system     
+
+    tolerations:          
+      - key: dedicated
+        operator: Equal
+        value: system
+        effect: NoSchedule
+
+  internal-frontend:
+    enabled: false  # Only needed for multi-cluster Temporal setups
+
+# ─── Admin Tools ──────────────────────────────────────────────────────────────
+# The admintools Deployment is a long-running ops/debug pod (tctl, temporal CLI).
+# Actual schema init (CREATE TABLE etc.) is done by the Helm pre-install hook
+# Jobs defined under `schema:` below — they use this same image.
+admintools:
+  enabled: true
+
+  nodeSelector:
+    nodegroup: system     
+
+  tolerations:          
+    - key: dedicated
+      operator: Equal
+      value: system
+      effect: NoSchedule
+
+# ─── Web UI ───────────────────────────────────────────────────────────────────
+web:
+  enabled: true
+  service:
+    type: ClusterIP
+    port: 8080
+
+  nodeSelector:
+    nodegroup: system     
+
+  tolerations:          
+    - key: dedicated
+      operator: Equal
+      value: system
+      effect: NoSchedule
+
+# ─── Schema Jobs (Helm pre-install hooks) ─────────────────────────────────────
+# These Jobs run BEFORE the server starts. They use the admintools image and run:
+#   temporal-sql-tool create-database + update-schema
+# for both `temporal` and `temporal_visibility` databases.
+# Order: Schema Jobs → (success) → Temporal Server pods start
+schema:
+  useHelmHooks: true       # Registers jobs as helm.sh/hook: pre-install,pre-upgrade
+  backoffLimit: 10      # Retry up to 10 times (handles RDS cold start delays)
+  ttlSecondsAfterFinished: 86400  # Clean up job pods after 24h
+  
+
+shims:
+  dockerize: false
+  elasticsearchTool: false
