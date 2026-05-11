@@ -1,0 +1,18 @@
+clusterName: PaymentsWorkflow
+
+serviceAccount:
+  create: false
+  name: aws-load-balancer-controller
+
+region: us-east-1
+
+vpcId: vpc-05c4b4c43f2e18934
+
+nodeSelector:
+  nodegroup: system
+
+tolerations:
+  - key: dedicated
+    operator: Equal
+    value: system
+    effect: NoSchedule
