@@ -28,12 +28,16 @@ COPY --from=builder /app/bin/api    ./api
 COPY --from=builder /app/bin/worker ./worker
 
 # Entrypoint script that reads the first argument
-ENTRYPOINT ["sh", "-c", "\
-  if [ \"$1\" = \"api\" ]; then \
-    exec ./api; \
-  elif [ \"$1\" = \"worker\" ]; then \
-    exec ./worker; \
-  else \
-    echo \"Usage: docker run <image> [api|worker]\"; \
-    exit 1; \
-  fi", "--", "$@"]
+# ENTRYPOINT ["sh", "-c", "\
+#   if [ \"$1\" = \"api\" ]; then \
+#     exec ./api; \
+#   elif [ \"$1\" = \"worker\" ]; then \
+#     exec ./worker; \
+#   else \
+#     echo \"Usage: docker run <image> [api|worker]\"; \
+#     exit 1; \
+#   fi", "--", "$@"]
+
+
+# Simple entrypoint — give arg:["api"] to run http handler binary and use ["worker"] to run worker binary
+ENTRYPOINT ["sh", "-c", "exec ./$1", "--"]

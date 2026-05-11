@@ -1,0 +1,21 @@
+# Environment files
+.env
+.env.*
+
+# Kubernetes manifests
+k8s/
+
+# Git
+.git
+.gitignore
+
+# Local binaries/build output
+bin/
+dist/
+
+# IDE/editor
+.vscode/
+.idea/
+
+# OS junk
+.DS_Store
