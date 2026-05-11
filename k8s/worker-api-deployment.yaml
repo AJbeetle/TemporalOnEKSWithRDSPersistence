@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-api
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payment-api
+  template:
+    metadata:
+      labels:
+        app: payment-api
+    spec:
+      nodeSelector:
+        nodegroup: app 
+      tolerations:
+        - key: "dedicatd"
+          operator: "Equal" 
+          value: "app"
+          effect: "NoSchedule"
+      containers:
+        - name: api
+          image: 915238109745.dkr.ecr.us-east-1.amazonaws.com/payment-temporal:1.7
+          imagePullPolicy: Always
+          ports:
+          - containerPort: 8080
+          args: ["api"]
+          env:
+            - name: TEMPORAL_HOST
+              value: "temporal-frontend.temporal.svc.cluster.local:7233"
+              name: PORT
+              value: ":8080"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-worker
+  namespace: default
+
+spec:
+
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payment-worker
+  template:
+    metadata:
+      labels:
+        app: payment-worker
+    spec:
+      nodeSelector:
+        nodegroup: app     
+      tolerations:
+        - key: "dedicatd"
+          operator: "Equal"
+          value: "app"
+          effect: "NoSchedule"
+
+      containers:
+        - name: worker
+          image: 915238109745.dkr.ecr.us-east-1.amazonaws.com/payment-temporal:1.7
+          imagePullPolicy: Always
+          args: ["worker"]
+          env:
+            - name: TEMPORAL_HOST
+              value: "temporal-frontend.temporal.svc.cluster.local:7233"
