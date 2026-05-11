@@ -1,3 +1,4 @@
+// internal/order/activities/validate.go
 package activities
 
 import (
@@ -5,43 +6,35 @@ import (
 	"fmt"
 	"math/rand"
 
+	"learningTemp/internal/order/models"
+
 	"go.temporal.io/sdk/activity"
 )
 
-type ValidateOrderResult struct {
-	OrderID     string
-	IsAvailable bool
-	Message     string
-}
-
-func ValidateOrder(ctx context.Context, orderID string) (*ValidateOrderResult, error) {
+func ValidateOrder(ctx context.Context, orderID string) (*models.ValidateOrderResult, error) {
 	logger := activity.GetLogger(ctx)
 	logger.Info("ValidateOrder started", "orderID", orderID)
 
-	// Mock: checking item availability
-	available := checkItemAvailability(orderID)
-
+	// Mock: check item availability
+	// In production: SELECT item_id, price, stock FROM orders WHERE id = ?
+	available := rand.Intn(10) >= 2 // 80% available
 	if !available {
-		// Returning an error triggers Temporal's retry policy
 		return nil, fmt.Errorf("item not available for order: %s", orderID)
 	}
 
-	logger.Info("ValidateOrder completed", "orderID", orderID, "available", true)
-
-	return &ValidateOrderResult{
-		OrderID:     orderID,
-		IsAvailable: true,
-		Message:     "item available",
-	}, nil
-}
-
-// Returns false ~20% of the time to simulate unavailability
-func checkItemAvailability(orderID string) bool {
-	// In production: queries to inventory DB or service
-	roll := rand.Intn(10)
-	if roll < 2 {
-		// 20% chance — item not available
-		return false
+	// Mock: return order details
+	// In production: these come from your DB
+	result := &models.ValidateOrderResult{
+		OrderID: orderID,
+		ItemID:  fmt.Sprintf("ITEM-%s", orderID), // mock item ID
+		Price:   int64(rand.Intn(90000) + 10000), // mock price: 100.00 to 999.99 in paise
 	}
-	return true
+
+	logger.Info("ValidateOrder completed",
+		"orderID", orderID,
+		"itemID", result.ItemID,
+		"price", result.Price,
+	)
+
+	return result, nil
 }
